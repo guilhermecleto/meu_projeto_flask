@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Instagram Engagement Checker</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            text-align: center;
+            background-color: #f4f4f9;
+            padding: 0;
+            margin: 0;
+        }
+        h1 {
+            font-size: 36px;
+            color: black;
+            margin-top: 50px;
+        }
+        h2 {
+            font-size: 18px;
+            color: gray;
+            font-weight: 400;
+        }
+        form {
+            display: inline-block;
+            margin: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        input[type="text"] {
+            padding: 15px;
+            width: 350px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+        }
+        button {
+            padding: 15px 25px;
+            background-color: #6c63ff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+        }
+        button:hover {
+            background-color: #5a54d1;
+        }
+        .dashboard {
+            display: flex;
+            justify-content: space-around;
+            margin: 30px auto;
+            width: 80%;
+        }
+        .dashboard-item {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            width: 22%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 15px;
+        }
+        .dashboard-item h3 {
+            margin: 10px 0;
+            font-size: 16px;
+            color: #6c63ff;
+        }
+        .dashboard-item p {
+            font-size: 24px;
+            color: black;
+            margin: 5px 0;
+        }
+        .dashboard-item img {
+            width: 30px;
+            height: 30px;
+            margin-bottom: 10px;
+        }
+        .profile-pic {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        #loading {
+            font-size: 18px;
+            color: gray;
+            display: none;
+            margin: 20px 0;
+        }
+        #loading-icon {
+            width: 30px;
+            height: 30px;
+            display: none;
+            margin-left: 10px;
+        }
+        #timer {
+            font-size: 14px;
+            color: gray;
+            margin-top: 5px;
+        }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #6c63ff;
+            color: white;
+            cursor: pointer;
+            position: relative;
+        }
+        th:after {
+            content: ' ';
+            display: inline-block;
+            margin-left: 5px;
+        }
+        th.sorted-asc:after {
+            content: '▲'; /* Seta para ordenação ascendente */
+            font-size: 5px; /* Reduz o tamanho da seta */
+        }
+        th.sorted-desc:after {
+            content: '▼'; /* Seta para ordenação descendente */
+            font-size: 5px; /* Reduz o tamanho da seta */
+        }
+        #results {
+            margin-bottom: 50px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Instagram Engagement Checker</h1>
+    <h2>Confira o engajamento do seu perfil favorito do Instagram</h2>
+
+    <form id="profile-form">
+        <input type="text" id="profile_name" name="profile_name" placeholder="Digite o @ do perfil" required>
+        <button type="submit">Consultar Engajamento</button>
+    </form>
+
+    <div id="loading">Coletando dados...<img id="loading-icon" src="https://i.gifer.com/ZKZx.gif" alt="Carregando"></div>
+    <div id="timer"></div>
+
+    <div id="profile-data"></div>
+
+    <div class="dashboard" id="dashboard-metrics"></div>
+
+    <div id="results"></div>
+
+    <script>
+        // Função para formatar números com separador de milhares
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+
+        document.getElementById('profile-form').onsubmit = async function (e) {
+            e.preventDefault();
+            
+            document.getElementById('loading').style.display = 'block';  
+            document.getElementById('loading-icon').style.display = 'inline';
+
+            let timer = 20;  // Tempo estimado de carregamento
+            const interval = setInterval(() => {
+                document.getElementById('timer').textContent = `Tempo estimado: ${timer} segundos`;
+                timer--;
+                if (timer < 0) {
+                    clearInterval(interval);
+                    document.getElementById('timer').textContent = 'Quase pronto!';
+                }
+            }, 1000);
+
+            const profile_name = document.getElementById('profile_name').value;
+            const response = await fetch('/get_profile', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'profile_name': profile_name
+                })
+            });
+
+            document.getElementById('loading').style.display = 'none';  
+            document.getElementById('loading-icon').style.display = 'none';  
+            const data = await response.json();
+            let resultDiv = document.getElementById('results');
+            let profileDiv = document.getElementById('profile-data');
+            let dashboardDiv = document.getElementById('dashboard-metrics');
+
+            if (data.error) {
+                resultDiv.innerHTML = `<p>Error: ${data.error}</p>`;
+            } else {
+                profileDiv.innerHTML = `
+                    <img src="${data.profile.profile_pic_url}" alt="Profile Picture" class="profile-pic">
+                    <h2>@${data.profile.username}</h2>
+                `;
+
+                // Dashboard com seguidores incluídos
+                dashboardDiv.innerHTML = `
+                    <div class="dashboard-item">
+                        <img src="https://image.flaticon.com/icons/png/512/1828/1828755.png" alt="Seguidores Icon">
+                        <h3>Seguidores</h3>
+                        <p>${formatNumber(data.profile.followers)}</p>
+                    </div>
+                    <div class="dashboard-item">
+                        <img src="https://image.flaticon.com/icons/png/512/1828/1828901.png" alt="Likes Icon">
+                        <h3>Média de Likes</h3>
+                        <p>${formatNumber(Math.round(data.averages.avg_likes))}</p>
+                    </div>
+                    <div class="dashboard-item">
+                        <img src="https://image.flaticon.com/icons/png/512/1828/1828755.png" alt="Comments Icon">
+                        <h3>Média de Comentários</h3>
+                        <p>${formatNumber(Math.round(data.averages.avg_comments))}</p>
+                    </div>
+                    <div class="dashboard-item">
+                        <img src="https://image.flaticon.com/icons/png/512/1828/1828934.png" alt="Engagement Icon">
+                        <h3>Taxa de Engajamento Médio</h3>
+                        <p>${(data.averages.avg_engagement * 100).toFixed(2)}%</p>
+                    </div>
+                `;
+
+                // Tabela de postagens com separadores de milhares
+                let table = `
+                    <table>
+                        <tr>
+                            <th onclick="sortTable(0, 'number')">#</th>
+                            <th onclick="sortTable(1, 'date')">Data do Post</th>
+                            <th>URL</th>
+                            <th onclick="sortTable(3, 'number')">Likes</th>
+                            <th onclick="sortTable(4, 'number')">Comentários</th>
+                            <th onclick="sortTable(5, 'number')">Visualizações</th>
+                            <th onclick="sortTable(6, 'number')">Engajamento</th>
+                        </tr>
+                `;
+                data.posts.forEach((post, index) => {
+                    table += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${new Date(post.date).toLocaleDateString()}</td>
+                            <td><a href="${post.url}" target="_blank">Ver Post</a></td>
+                            <td>${formatNumber(post.likes)}</td>
+                            <td>${formatNumber(post.comments)}</td>
+                            <td>${post.views ? formatNumber(post.views) : '-'}</td>
+                            <td>${(post.engagement * 100).toFixed(2)}%</td>
+                        </tr>
+                    `;
+                });
+                table += `</table>`;
+                resultDiv.innerHTML = table;
+            }
+        };
+
+        // Função para ordenar a tabela e adicionar setinhas de ordenação
+        function sortTable(n, type) {
+            const table = document.querySelector("table");
+            let rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+            switching = true;
+            dir = "asc";
+
+            // Remove as setinhas anteriores
+            const thElements = table.getElementsByTagName("TH");
+            for (let th of thElements) {
+                th.classList.remove("sorted-asc", "sorted-desc");
+            }
+
+            while (switching) {
+                switching = false;
+                rows = table.rows;
+
+                for (i = 1; i < (rows.length - 1); i++) {
+                    shouldSwitch = false;
+                    x = rows[i].getElementsByTagName("TD")[n];
+                    y = rows[i + 1].getElementsByTagName("TD")[n];
+
+                    if (dir === "asc") {
+                        if (type === 'number') {
+                            if (parseFloat(x.innerHTML.replace('.', '')) > parseFloat(y.innerHTML.replace('.', ''))) {
+                                shouldSwitch = true;
+                                break;
+                            }
+                        } else if (type === 'date') {
+                            if (new Date(x.innerHTML) > new Date(y.innerHTML)) {
+                                shouldSwitch = true;
+                                break;
+                            }
+                        } else {
+                            if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                                shouldSwitch = true;
+                                break;
+                            }
+                        }
+                    } else if (dir === "desc") {
+                        if (type === 'number') {
+                            if (parseFloat(x.innerHTML.replace('.', '')) < parseFloat(y.innerHTML.replace('.', ''))) {
+                                shouldSwitch = true;
+                                break;
+                            }
+                        } else if (type === 'date') {
+                            if (new Date(x.innerHTML) < new Date(y.innerHTML)) {
+                                shouldSwitch = true;
+                                break;
+                            }
+                        } else {
+                            if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                                shouldSwitch = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (shouldSwitch) {
+                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                    switching = true;
+                    switchcount++;
+                } else {
+                    if (switchcount === 0 && dir === "asc") {
+                        dir = "desc";
+                        switching = true;
+                    }
+                }
+            }
+
+            // Adiciona a seta na coluna correspondente
+            if (dir === "asc") {
+                thElements[n].classList.add("sorted-asc");
+            } else {
+                thElements[n].classList.add("sorted-desc");
+            }
+        }
+    </script>
+</body>
+</html>
