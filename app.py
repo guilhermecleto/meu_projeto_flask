@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import instaloader
+import time
+import random
 
 app = Flask(__name__)
 
@@ -26,6 +28,9 @@ def get_instagram_data(profile_name):
         for post in profile.get_posts():
             if post_count >= 10:
                 break
+
+            # Adicionar um delay aleatório entre 5 e 15 segundos entre requisições
+            time.sleep(random.uniform(5, 15))
 
             # Verificar se o post é Reels para incluir visualizações, se disponível
             is_reel = post.typename == 'GraphVideo'
